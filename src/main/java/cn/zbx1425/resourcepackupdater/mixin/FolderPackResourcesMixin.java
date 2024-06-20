@@ -3,86 +3,96 @@ package cn.zbx1425.resourcepackupdater.mixin;
 import cn.zbx1425.resourcepackupdater.ResourcePackUpdater;
 import cn.zbx1425.resourcepackupdater.drm.AssetEncryption;
 import cn.zbx1425.resourcepackupdater.drm.ServerLockRegistry;
+import net.minecraft.FileUtil;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.AbstractPackResources;
-import net.minecraft.server.packs.FolderPackResources;
+import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.ResourcePackFileNotFoundException;
+import net.minecraft.server.packs.PathPackResources;
+import net.minecraft.server.packs.resources.IoSupplier;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.function.Predicate;
 
-@Mixin(FolderPackResources.class)
+@Mixin(PathPackResources.class)
 public abstract class FolderPackResourcesMixin extends AbstractPackResources {
 
     @Unique
-    private File canonicalFile;
+    private Path canonicalRoot;
 
     @Unique
-    private File getCanonicalFile() {
-        if (canonicalFile == null) {
+    private Path getCanonicalRoot() {
+        if (canonicalRoot == null) {
             try {
-                canonicalFile = file.getCanonicalFile();
+                canonicalRoot = root.toRealPath();
             } catch (IOException e) {
-                canonicalFile = file;
+                canonicalRoot = root;
             }
         }
-        return canonicalFile;
+        return canonicalRoot;
     }
 
-    private FolderPackResourcesMixin(File file) { super(file); }
+    private FolderPackResourcesMixin(String string, boolean bl) { super(string, bl); }
 
-    @Shadow
-    private File getFile(String string) { return null; }
+    @Shadow @Final private Path root;
 
-    @Inject(method = "getResource", at = @At("HEAD"), cancellable = true)
-    void getResource(String resourcePath, CallbackInfoReturnable<InputStream> cir) throws IOException {
-        if (getCanonicalFile().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
-            File file = this.getFile(resourcePath);
-            if (file == null || ServerLockRegistry.shouldRefuseProvidingFile(resourcePath)) {
-                throw new ResourcePackFileNotFoundException(this.file, resourcePath);
+    @Inject(method = "getResource(Lnet/minecraft/server/packs/PackType;Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/server/packs/resources/IoSupplier;", at = @At("HEAD"), cancellable = true)
+    void getResource(PackType packType, ResourceLocation location, CallbackInfoReturnable<IoSupplier<InputStream>> cir) throws IOException {
+        if (getCanonicalRoot().toFile().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
+            Path path = this.root.resolve(packType.getDirectory()).resolve(location.getNamespace());
+            var decomposeResult = FileUtil.decomposePath(location.getPath()).get();
+            if (decomposeResult.left().isEmpty()) {
+                cir.setReturnValue(null);
+                cir.cancel();
+                return;
             }
-            FileInputStream fis = new FileInputStream(file);
-            cir.setReturnValue(AssetEncryption.wrapInputStream(fis));
-            cir.cancel();
+            Path path2 = FileUtil.resolvePath(path, decomposeResult.left().get());
+            if (ServerLockRegistry.shouldRefuseProvidingFile(path2.toString())) {
+                cir.setReturnValue(null);
+                cir.cancel();
+                return;
+            }
+            if (Files.exists(path2)) {
+                cir.setReturnValue(() -> AssetEncryption.wrapInputStream(new FileInputStream(path2.toFile())));
+                cir.cancel();
+            } else {
+                cir.setReturnValue(null);
+                cir.cancel();
+            }
         }
     }
 
-    @Inject(method = "hasResource", at = @At("HEAD"), cancellable = true)
-    void hasResource(String resourcePath, CallbackInfoReturnable<Boolean> cir) {
-        if (getCanonicalFile().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
-            if (ServerLockRegistry.shouldRefuseProvidingFile(resourcePath)) {
-                cir.setReturnValue(false); cir.cancel();
-            }
-        }
-    }
-    @Inject(method = "getResources", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "listResources", at = @At("HEAD"), cancellable = true)
 #if MC_VERSION >= "11900"
-    void getResources(PackType type, String namespace, String path, Predicate<ResourceLocation> filter, CallbackInfoReturnable<Collection<ResourceLocation>> cir) {
+    void getResources(PackType packType, String namespace, String path, ResourceOutput resourceOutput, CallbackInfo ci) {
 #else
     void getResources(PackType type, String namespace, String path, int maxDepth, Predicate<ResourceLocation> filter, CallbackInfoReturnable<Collection<ResourceLocation>> cir) {
 #endif
-        if (getCanonicalFile().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
+        if (getCanonicalRoot().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
             if (ServerLockRegistry.shouldRefuseProvidingFile(null)) {
-                cir.setReturnValue(Collections.emptyList()); cir.cancel();
+                ci.cancel();
             }
         }
     }
     @Inject(method = "getNamespaces", at = @At("HEAD"), cancellable = true)
     void getNamespaces(PackType type, CallbackInfoReturnable<Set<String>> cir) {
-        if (getCanonicalFile().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
+        if (getCanonicalRoot().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
             if (ServerLockRegistry.shouldRefuseProvidingFile(null)) {
                 cir.setReturnValue(Collections.emptySet()); cir.cancel();
             }

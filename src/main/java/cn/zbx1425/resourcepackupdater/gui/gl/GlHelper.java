@@ -4,11 +4,11 @@ import cn.zbx1425.resourcepackupdater.ResourcePackUpdater;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
-import com.mojang.math.Matrix4f;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
+import org.joml.Matrix4f;
 
 public class GlHelper {
 
@@ -19,6 +19,7 @@ public class GlHelper {
 
     private static ShaderInstance previousShader;
     private static Matrix4f lastProjectionMat;
+    private static VertexSorting lastVertexSorting;
 
     public static void initGlStates() {
         previousShader = RenderSystem.getShader();
@@ -27,8 +28,8 @@ public class GlHelper {
         RenderSystem.getModelViewStack().setIdentity();
         RenderSystem.applyModelViewMatrix();
         lastProjectionMat = RenderSystem.getProjectionMatrix();
+        lastVertexSorting = RenderSystem.getVertexSorting();
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        RenderSystem.enableTexture();
         RenderSystem.enableBlend();
         RenderSystem.disableDepthTest();
         RenderSystem.disableCull();
@@ -41,7 +42,7 @@ public class GlHelper {
         RenderSystem.getModelViewStack().popPose();
         RenderSystem.applyModelViewMatrix();
         RenderSystem.setShader(() -> previousShader);
-        RenderSystem.setProjectionMatrix(lastProjectionMat);
+        RenderSystem.setProjectionMatrix(lastProjectionMat, lastVertexSorting);
     }
 
     public static final ResourceLocation PRELOAD_FONT_TEXTURE =
@@ -141,22 +142,20 @@ public class GlHelper {
 
     public static void setMatPixel() {
         Matrix4f matrix = new Matrix4f();
-        matrix.setIdentity();
-        matrix.multiply(Matrix4f.createScaleMatrix(2, -2, 1));
-        matrix.multiply(Matrix4f.createTranslateMatrix(-0.5f, -0.5f, 0));
+        matrix.scale(2, -2, 1);
+        matrix.translate(-0.5f, -0.5f, 0);
         float rawWidth = Minecraft.getInstance().getWindow().getWidth();
         float rawHeight = Minecraft.getInstance().getWindow().getHeight();
-        matrix.multiply(Matrix4f.createScaleMatrix(1 / rawWidth, 1 / rawHeight, 1));
-        RenderSystem.setProjectionMatrix(matrix);
+        matrix.scale(1 / rawWidth, 1 / rawHeight, 1);
+        RenderSystem.setProjectionMatrix(matrix, VertexSorting.ORTHOGRAPHIC_Z);
     }
 
     public static void setMatScaledPixel() {
         Matrix4f matrix = new Matrix4f();
-        matrix.setIdentity();
-        matrix.multiply(Matrix4f.createScaleMatrix(2, -2, 1));
-        matrix.multiply(Matrix4f.createTranslateMatrix(-0.5f, -0.5f, 0));
-        matrix.multiply(Matrix4f.createScaleMatrix(1f / getWidth(), 1f / getHeight(), 1));
-        RenderSystem.setProjectionMatrix(matrix);
+        matrix.scale(2, -2, 1);
+        matrix.translate(-0.5f, -0.5f, 0);
+        matrix.scale(1f / getWidth(), 1f / getHeight(), 1);
+        RenderSystem.setProjectionMatrix(matrix, VertexSorting.ORTHOGRAPHIC_Z);
     }
 
     public static int getWidth() {
@@ -178,17 +177,16 @@ public class GlHelper {
 
     public static void setMatCenterForm(float width, float height, float widthPercent) {
         Matrix4f matrix = new Matrix4f();
-        matrix.setIdentity();
-        matrix.multiply(Matrix4f.createScaleMatrix(2, -2, 1));
-        matrix.multiply(Matrix4f.createTranslateMatrix(-0.5f, -0.5f, 0));
+        matrix.scale(2, -2, 1);
+        matrix.translate(-0.5f, -0.5f, 0);
         float rawWidth = Minecraft.getInstance().getWindow().getWidth();
         float rawHeight = Minecraft.getInstance().getWindow().getHeight();
-        matrix.multiply(Matrix4f.createScaleMatrix(1 / rawWidth, 1 / rawHeight, 1));
+        matrix.scale(1f / rawWidth, 1f / rawHeight, 1);
         float formRawWidth = rawWidth * widthPercent;
         float formRawHeight = height / width * formRawWidth;
-        matrix.multiply(Matrix4f.createTranslateMatrix((rawWidth - formRawWidth) / 2f, (rawHeight - formRawHeight) / 2f, 0));
-        matrix.multiply(Matrix4f.createScaleMatrix(formRawWidth / width, formRawHeight / height, 1));
-        RenderSystem.setProjectionMatrix(matrix);
+        matrix.translate((rawWidth - formRawWidth) / 2f, (rawHeight - formRawHeight) / 2f, 0);
+        matrix.scale(formRawWidth / width, formRawHeight / height, 1);
+        RenderSystem.setProjectionMatrix(matrix, VertexSorting.ORTHOGRAPHIC_Z);
     }
 
     private static VertexConsumer withColor(VertexConsumer vc, int color) {

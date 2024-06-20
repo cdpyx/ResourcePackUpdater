@@ -11,6 +11,7 @@ import org.apache.commons.io.IOUtils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Objects;
 
 public class ServerLockRegistry {
@@ -24,14 +25,14 @@ public class ServerLockRegistry {
 
     private static boolean serverLockPrefetched = false;
 
-    public static void updateLocalServerLock(File rpFolder) {
+    public static void updateLocalServerLock(Path rpFolder) {
         if (lockAllSyncedPacks) {
             localServerLock = null; // So that when no longer lockAllSyncedPacks, the pack will reload
             return;
         }
         try {
             JsonObject metaObj = ResourcePackUpdater.JSON_PARSER.parse(IOUtils.toString(
-                    AssetEncryption.wrapInputStream(new FileInputStream(rpFolder.toPath().resolve("pack.mcmeta").toFile()))
+                    AssetEncryption.wrapInputStream(new FileInputStream(rpFolder.resolve("pack.mcmeta").toFile()))
                     , StandardCharsets.UTF_8)).getAsJsonObject();
             if (metaObj.has("zbx_rpu_server_lock")) {
                 localServerLock = metaObj.get("zbx_rpu_server_lock").getAsString();
@@ -75,13 +76,13 @@ public class ServerLockRegistry {
         }
 
         if (localServerLock == null) {
-            ResourcePackUpdater.LOGGER.info("Asset coordination not required by this pack.");
+            ResourcePackUpdater.LOGGER.info("Asset coordination not required.");
         } else if (remoteServerLock == null) {
-            ResourcePackUpdater.LOGGER.info("Asset coordination identifier not received.");
+            ResourcePackUpdater.LOGGER.info("Asset coordination received no cooperation.");
         } else if (!remoteServerLock.equals(localServerLock)) {
-            ResourcePackUpdater.LOGGER.info("Asset coordination identifier differs.");
+            ResourcePackUpdater.LOGGER.info("Asset coordination received discrepancy.");
         } else if (lockAllSyncedPacks) {
-            ResourcePackUpdater.LOGGER.info("Asset coordination is unavailable due to incomplete synchronization.");
+            ResourcePackUpdater.LOGGER.info("Asset coordination is unavailable for incompleteness.");
         } else {
             ResourcePackUpdater.LOGGER.info("Asset coordination is applicable.");
         }

@@ -109,8 +109,8 @@ public class GlHelper {
             } else if (chr == '\r') {
                 // Ignore CR
             } else if (chr == '\t') {
-                // Align to 4 spaces
-                float alignToPixels = (preloadFont.spaceWidthPl + CHAR_SPACING) * 4 * fontSize;
+                // Align to 8 spaces
+                float alignToPixels = (preloadFont.spaceWidthPl + CHAR_SPACING) * 8 * fontSize;
                 x = (float) (Math.ceil((x - x1) / alignToPixels) * alignToPixels + x1);
             } else if (chr == ' ') {
                 x += (preloadFont.spaceWidthPl + CHAR_SPACING) * fontSize;

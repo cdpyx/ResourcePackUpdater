@@ -1,6 +1,7 @@
 package cn.zbx1425.resourcepackupdater.io.network;
 
 import cn.zbx1425.resourcepackupdater.ResourcePackUpdater;
+import cn.zbx1425.resourcepackupdater.ResourcePackUpdaterClient;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;
@@ -85,14 +86,14 @@ public class DownloadTask {
          */
 
         HttpRequest httpRequest = HttpRequest.newBuilder(requestUri)
-                .timeout(Duration.ofSeconds(10))
+                .timeout(Duration.ofSeconds(20))
                 .setHeader("User-Agent", "ResourcePackUpdater/" + ResourcePackUpdater.MOD_VERSION + " +https://www.zbx1425.cn")
                 .setHeader("Accept-Encoding", "gzip")
                 .GET()
                 .build();
         HttpResponse<InputStream> httpResponse;
         try {
-            httpResponse = ResourcePackUpdater.HTTP_CLIENT.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
+            httpResponse = ResourcePackUpdaterClient.HTTP_CLIENT.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
         } catch (InterruptedException ex) {
             throw new IOException(ex);
         }

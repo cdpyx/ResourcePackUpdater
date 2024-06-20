@@ -6,7 +6,6 @@ import cn.zbx1425.resourcepackupdater.drm.ServerLockRegistry;
 import net.minecraft.FileUtil;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.AbstractPackResources;
-import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.resources.IoSupplier;
@@ -19,16 +18,15 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 
 @Mixin(PathPackResources.class)
 public abstract class FolderPackResourcesMixin extends AbstractPackResources {
@@ -52,9 +50,23 @@ public abstract class FolderPackResourcesMixin extends AbstractPackResources {
 
     @Shadow @Final private Path root;
 
+    @Inject(method = "getRootResource", at = @At("HEAD"), cancellable = true)
+    public void getRootResource(String[] elements, CallbackInfoReturnable<IoSupplier<InputStream>> cir) {
+        if (getCanonicalRoot().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
+            Path path = FileUtil.resolvePath(this.root, List.of(elements));
+            if (Files.exists(path)) {
+                cir.setReturnValue(() -> AssetEncryption.wrapInputStream(new FileInputStream(path.toFile())));
+                cir.cancel();
+            } else {
+                cir.setReturnValue(null);
+                cir.cancel();
+            }
+        }
+    }
+
     @Inject(method = "getResource(Lnet/minecraft/server/packs/PackType;Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/server/packs/resources/IoSupplier;", at = @At("HEAD"), cancellable = true)
     void getResource(PackType packType, ResourceLocation location, CallbackInfoReturnable<IoSupplier<InputStream>> cir) throws IOException {
-        if (getCanonicalRoot().toFile().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
+        if (getCanonicalRoot().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
             Path path = this.root.resolve(packType.getDirectory()).resolve(location.getNamespace());
             var decomposeResult = FileUtil.decomposePath(location.getPath()).get();
             if (decomposeResult.left().isEmpty()) {

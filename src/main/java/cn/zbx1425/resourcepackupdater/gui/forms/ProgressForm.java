@@ -27,7 +27,7 @@ public class ProgressForm implements GlScreenForm {
         GlHelper.drawString(barBegin + usableBarWidth * primaryProgress, 0 + 10, 80, LINE_HEIGHT, 16,
                 String.format("%d%%", Math.round(primaryProgress * 100)), 0xff35aa8e, false, true);
 
-        GlHelper.drawString(20, 50, progressFormWidth - 40, 50, 20,
+        GlHelper.drawString(20, 45, progressFormWidth - 40, 50, 20,
                 primaryInfo, 0xff222222, false, false);
 
         /*
@@ -37,15 +37,18 @@ public class ProgressForm implements GlScreenForm {
                 String.format("%d%%", Math.round(secondaryProgress * 100)), 0xff49baee, false, true);
         */
 
-        GlHelper.drawString(20, 80, progressFormWidth - 40, 200 - 100, 16,
+        if (secondaryProgress.contains("\n")) {
+            GlHelper.blit(0, 70, progressFormWidth, 185 - 70, 0x3399abab);
+        }
+        GlHelper.drawString(20, 80, progressFormWidth - 40, 180 - 80, 16,
                 secondaryProgress, 0xff222222, false, true);
 
         boolean monospace = !auxilaryInfo.isEmpty() && auxilaryInfo.charAt(0)== ':';
-        GlHelper.drawString(20, 190, progressFormWidth - 40, 30, 18,
+        GlHelper.drawString(20, 195, progressFormWidth - 40, 30, 18,
                 monospace ? auxilaryInfo.substring(1) : auxilaryInfo, 0xff222222, monospace, false);
 
         String escBtnHint = ResourcePackUpdater.CONFIG.sourceList.value.size() > 1 ? "Cancel / Use Another Source" : "Cancel";
-        GlHelper.drawString(20, progressFormHeight - 20, progressFormWidth - 40, 16, 16, escBtnHint + ": Hold ESC", 0xff222222, false, true);
+        GlHelper.drawString(20, progressFormHeight - 30, progressFormWidth - 40, 16, 16, escBtnHint + ": Hold ESC", 0xff222222, false, true);
 
         GlHelper.end();
     }

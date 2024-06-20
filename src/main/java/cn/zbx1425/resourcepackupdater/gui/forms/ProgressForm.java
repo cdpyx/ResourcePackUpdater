@@ -12,7 +12,7 @@ public class ProgressForm implements GlScreenForm {
     private float primaryProgress;
     private String secondaryProgress;
 
-    private static final float progressFormWidth = 600, progressFormHeight = 240;
+    private static final float progressFormWidth = 600, progressFormHeight = 290;
 
     @Override
     public void render() {
@@ -20,15 +20,15 @@ public class ProgressForm implements GlScreenForm {
         GlHelper.begin(GlHelper.PRELOAD_FONT_TEXTURE);
         GlScreenForm.drawShadowRect(progressFormWidth, progressFormHeight, 0xffdee6ea);
 
-        GlHelper.drawString(20, 20, progressFormWidth - 40, 50, 20,
-                primaryInfo, 0xff222222, false, false);
-
         float barBegin = 30;
         float usableBarWidth = progressFormWidth - barBegin - 30;
-        GlHelper.blit(barBegin, 70, usableBarWidth, 30, 0x4446ddb9);
-        GlHelper.blit(barBegin, 70, usableBarWidth * primaryProgress, 30, 0xff46ddb9);
-        GlHelper.drawString(barBegin + usableBarWidth * primaryProgress, 70 + 10, 80, LINE_HEIGHT, 16,
+        GlHelper.blit(barBegin, 20, usableBarWidth, 30, 0x4446ddb9);
+        GlHelper.blit(barBegin, 20, usableBarWidth * primaryProgress, 30, 0xff46ddb9);
+        GlHelper.drawString(barBegin + usableBarWidth * primaryProgress, 20 + 10, 80, LINE_HEIGHT, 16,
                 String.format("%d%%", Math.round(primaryProgress * 100)), 0xff46ddb9, false, true);
+
+        GlHelper.drawString(20, 70, progressFormWidth - 40, 50, 20,
+                primaryInfo, 0xff222222, false, false);
 
         /*
         GlHelper.blit(barBegin, 110, usableBarWidth, 30, 0x4449baee);
@@ -37,11 +37,11 @@ public class ProgressForm implements GlScreenForm {
                 String.format("%d%%", Math.round(secondaryProgress * 100)), 0xff49baee, false, true);
         */
 
-        GlHelper.drawString(barBegin, 110, usableBarWidth, 170 - 110, 16,
-                secondaryProgress, 0xff222222, false, false);
+        GlHelper.drawString(barBegin, 100, usableBarWidth, 220 - 100, 16,
+                secondaryProgress, 0xff222222, false, true);
 
         boolean monospace = !auxilaryInfo.isEmpty() && auxilaryInfo.charAt(0)== ':';
-        GlHelper.drawString(20, 180, progressFormWidth - 40, 30, 18,
+        GlHelper.drawString(20, 230, progressFormWidth - 40, 30, 18,
                 monospace ? auxilaryInfo.substring(1) : auxilaryInfo, 0xff222222, monospace, false);
 
         String escBtnHint = ResourcePackUpdater.CONFIG.sourceList.value.size() > 1 ? "Cancel / Use Another Source" : "Cancel";

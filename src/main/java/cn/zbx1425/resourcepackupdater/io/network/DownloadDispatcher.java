@@ -32,7 +32,7 @@ public class DownloadDispatcher {
         this.progressReceiver = progressReceiver;
     }
 
-    private final int MAX_RETRIES = 3;
+    private final int MAX_RETRIES = 8;
 
     public void dispatch(DownloadTask task, Supplier<OutputStream> target) {
         totalBytes += task.expectedSize;
@@ -90,11 +90,13 @@ public class DownloadDispatcher {
         progressReceiver.setProgress(downloadedBytes * 1f / totalBytes, 0);
 
         String runningProgress = incompleteTasks.size() + " Files Remaining\n" +
-                String.join(";  ", runningTasks.stream()
-                .map(task -> task.fileName + ":" + (
+                String.join("\n", runningTasks.stream()
+                .map(task -> "  " + (
                         task.totalBytes == 0 ? "WAIT" :
                         String.format("%.1f%%", task.downloadedBytes * 100f / task.totalBytes)
-                ))
+                ) + "\t"
+                + (task.failedAttempts > 0 ? "(RETRY " + task.failedAttempts + ") " : "")
+                + task.fileName)
                 .toList());
         progressReceiver.setInfo(runningProgress, message);
     }

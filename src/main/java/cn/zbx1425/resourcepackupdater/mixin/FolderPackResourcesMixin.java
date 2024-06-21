@@ -3,12 +3,16 @@ package cn.zbx1425.resourcepackupdater.mixin;
 import cn.zbx1425.resourcepackupdater.ResourcePackUpdater;
 import cn.zbx1425.resourcepackupdater.drm.AssetEncryption;
 import cn.zbx1425.resourcepackupdater.drm.ServerLockRegistry;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import net.minecraft.DetectedVersion;
 import net.minecraft.FileUtil;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.AbstractPackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.resources.IoSupplier;
+import org.apache.commons.io.IOUtils;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -21,9 +25,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -55,7 +61,11 @@ public abstract class FolderPackResourcesMixin extends AbstractPackResources {
         if (getCanonicalRoot().equals(ResourcePackUpdater.CONFIG.packBaseDirFile.value)) {
             Path path = FileUtil.resolvePath(this.root, List.of(elements));
             if (Files.exists(path)) {
-                cir.setReturnValue(() -> AssetEncryption.wrapInputStream(new FileInputStream(path.toFile())));
+                if (Arrays.equals(elements, new String[] { "pack.mcmeta" })) {
+                    cir.setReturnValue(() -> patchPackMeta(AssetEncryption.wrapInputStream(new FileInputStream(path.toFile()))));
+                } else {
+                    cir.setReturnValue(() -> AssetEncryption.wrapInputStream(new FileInputStream(path.toFile())));
+                }
                 cir.cancel();
             } else {
                 cir.setReturnValue(null);
@@ -109,5 +119,12 @@ public abstract class FolderPackResourcesMixin extends AbstractPackResources {
                 cir.setReturnValue(Collections.emptySet()); cir.cancel();
             }
         }
+    }
+
+    @Unique
+    private static InputStream patchPackMeta(InputStream inputStream) throws IOException {
+        JsonObject jsonObject = JsonParser.parseString(IOUtils.toString(inputStream, StandardCharsets.UTF_8)).getAsJsonObject();
+        jsonObject.getAsJsonObject("pack").addProperty("pack_format", DetectedVersion.tryDetectVersion().getPackVersion(PackType.CLIENT_RESOURCES));
+        return IOUtils.toInputStream(jsonObject.toString(), StandardCharsets.UTF_8);
     }
 }

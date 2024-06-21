@@ -104,7 +104,7 @@ public class Dispatcher {
             cb.amendLastLog("Done");
 
             remoteMetadata.beginDownloads(cb);
-            cb.printLog("Downloading files ...");
+            cb.printLog("Downloading files ... ");
             DownloadDispatcher downloadDispatcher = new DownloadDispatcher(cb);
             for (String file : Stream.concat(filesToCreate.stream(), filesToUpdate.stream()).toList()) {
                 DownloadTask task = new DownloadTask(downloadDispatcher,
@@ -115,7 +115,7 @@ public class Dispatcher {
             while (!downloadDispatcher.tasksFinished()) {
                 downloadDispatcher.updateSummary();
                 ((GlProgressScreen)cb).redrawScreen(true);
-                Thread.sleep(1000 / 40);
+                Thread.sleep(1000 / 30);
             }
             remoteMetadata.downloadedBytes += downloadDispatcher.downloadedBytes;
             downloadDispatcher.close();

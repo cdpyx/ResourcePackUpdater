@@ -8,7 +8,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 public class GlHelper {
 
@@ -138,6 +140,31 @@ public class GlHelper {
         }
     }
 
+    public static float getStringWidth(String text, float fontSize) {
+        float CHAR_SPACING = 0f;
+
+        float width = 0;
+        float x = 0;
+        for (char chr : text.toCharArray()) {
+            if (chr == '\n') {
+                width = Math.max(width, x);
+                x = 0;
+            } else if (chr == '\r') {
+                // Ignore CR
+            } else if (chr == '\t') {
+                // Align to 8 spaces
+                float alignToPixels = (preloadFont.spaceWidthPl + CHAR_SPACING) * 8 * fontSize;
+                x = (float) (Math.ceil(x / alignToPixels) * alignToPixels);
+            } else if (chr == ' ') {
+                x += (preloadFont.spaceWidthPl + CHAR_SPACING) * fontSize;
+            } else {
+                SimpleFont.GlyphProperty glyph = preloadFont.getGlyph(chr);
+                x += glyph.advancePl * fontSize + CHAR_SPACING * fontSize;
+            }
+        }
+        return Math.max(width, x);
+    }
+
     public static void setMatIdentity() {
         RenderSystem.getModelViewStack().setIdentity();
     }
@@ -189,6 +216,21 @@ public class GlHelper {
         matrix.translate((rawWidth - formRawWidth) / 2f, (rawHeight - formRawHeight) / 2f, 0);
         matrix.scale(formRawWidth / width, formRawHeight / height, 1);
         RenderSystem.setProjectionMatrix(matrix, VertexSorting.ORTHOGRAPHIC_Z);
+    }
+
+    public static void enableScissor(float x, float y, float width, float height) {
+        Matrix4f posMap = RenderSystem.getProjectionMatrix();
+        Vector3f bottomLeft = posMap.transformPosition(new Vector3f(x, y + height, 0));
+        Vector3f topRight = posMap.transformPosition(new Vector3f(x + width, y, 0));
+        float x1 = Mth.map(bottomLeft.x, -1, 1, 0, Minecraft.getInstance().getWindow().getWidth());
+        float y1 = Mth.map(bottomLeft.y, -1, 1, 0, Minecraft.getInstance().getWindow().getHeight());
+        float x2 = Mth.map(topRight.x, -1, 1, 0, Minecraft.getInstance().getWindow().getWidth());
+        float y2 = Mth.map(topRight.y, -1, 1, 0, Minecraft.getInstance().getWindow().getHeight());
+        RenderSystem.enableScissor((int)x1, (int)y1, (int)(x2 - x1), (int)(y2 - y1));
+    }
+
+    public static void disableScissor() {
+        RenderSystem.disableScissor();
     }
 
     private static VertexConsumer withColor(VertexConsumer vc, int color) {

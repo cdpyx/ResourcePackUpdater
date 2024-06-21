@@ -43,6 +43,12 @@ public class DownloadDispatcher {
                 while (true) {
                     try {
                         task.runBlocking(target.get());
+                        if (task.failedAttempts > 0) {
+                            delayedProgresses.add(() -> {
+                                progressReceiver.printLog(String.format("Downloading files ... (Retry %d succeed)",
+                                        task.failedAttempts));
+                            });
+                        }
                         break;
                     } catch (Exception ex) {
                         task.failedAttempts++;
@@ -50,7 +56,7 @@ public class DownloadDispatcher {
                             delayedProgresses.add(() -> {
                                 progressReceiver.printLog(String.format("Retry (%d/%d) for %s due to error:",
                                         task.failedAttempts, MAX_RETRIES, task.fileName));
-                                progressReceiver.printLog(ex.toString());
+                                progressReceiver.printLog(String.format("Retry %d: %s", task.failedAttempts, ex.toString()));
                             });
                         } else {
                             throw ex;
@@ -79,14 +85,14 @@ public class DownloadDispatcher {
         } else {
             long currentTime = System.currentTimeMillis();
             long deltaTime = currentTime - lastSummaryTime;
-            if (deltaTime > 1000) {
-                summaryBytesPerSecond = (downloadedBytes - lastSummaryBytes) * 1000 / deltaTime;
-                lastSummaryTime = currentTime;
-                lastSummaryBytes = downloadedBytes;
-            }
+            double SMOOTH_FACTOR = 0.05;
+            double instantSpeed = (downloadedBytes - lastSummaryBytes) * 1000.0 / deltaTime;
+            summaryBytesPerSecond = (long) (summaryBytesPerSecond * (1 - SMOOTH_FACTOR) + instantSpeed * SMOOTH_FACTOR);
+            lastSummaryTime = currentTime;
+            lastSummaryBytes = downloadedBytes;
         }
-        String message = String.format(": %5d KiB / %5d KiB; %5d KiB/s",
-                downloadedBytes / 1024, totalBytes / 1024, summaryBytesPerSecond / 1024);
+        String message = String.format(": % 5.2f MiB / % 5.2f MiB; %5d KiB/s",
+                downloadedBytes / 1048576.0, totalBytes / 1048576.0, summaryBytesPerSecond / 1024);
         progressReceiver.setProgress(downloadedBytes * 1f / totalBytes, 0);
 
         String runningProgress = incompleteTasks.size() + " Files Remaining\n" +
